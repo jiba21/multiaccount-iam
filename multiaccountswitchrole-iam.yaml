@@ -1,0 +1,533 @@
+---
+
+# Multi-Cuenta
+##
+## TODO:
+###  Este cloud Formation crea
+###  Politicas
+###        * LNKPolicyAdmin
+###        * LNKPolicyBilling
+###   Roles - Salto CuentaCliente
+###        * LNK-AdminUser
+###        * LNK-ReadOnly
+###        * LNK-SecurityAudit
+###        * LNK-SupperUser
+###        * LNK-DeveloperUser
+###        * LNK-NetworkAdmin
+###        * LNK-SystemAdmin
+###   Grupos
+###        * PowerUser
+###        * ReadOnly
+###        * SecurityAudit
+###        * SupperUser
+###        * DeveloperUser
+###        * NetworkAdmin
+###        * SystemAdmin
+### A la cuenta: - LinkeAuth
+### Doc: https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_job-functions.html
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+      Creacion de Roles Iniciales para cuentas nuevas
+      Name: Auth-SwitchRolesAndPolicies
+Parameters:
+  ClientName:
+    Type: String
+    Default: Client Name
+    ConstraintDescription: "Identificador del cliente"
+  CuentaOrigen:
+    Type: String
+    Default: YES
+    AllowedValues:
+      - YES
+      - NO
+    ConstraintDescription: "YES or NO."
+  CuentaDestino:
+    Type: String
+    Default: YES
+    AllowedValues:
+      - YES
+      - NO
+    ConstraintDescription: "YES or NO."
+  DestinationSwitchRole:
+    Type: String
+    Default: Cuenta Linke
+    ConstraintDescription: "Cuenta de Destino, puede ser la misma"
+  AccountSwitchRole:
+    Type: String
+    Default: Cuenta Linke
+    ConstraintDescription: "Cuenta de Origen, puede ser la misma"
+Conditions:
+  CreateGroups: !Equals [ !Ref CuentaOrigen, YES ]
+  CreateRoles: !Equals [ !Ref CuentaDestino, YES ]
+Resources:
+  PowerUser:
+    Condition: CreateRoles
+    Type: "AWS::IAM::Role"
+    Properties:
+      Path: "/"
+      RoleName: 
+        !Sub
+          - ${ClientName}-admin
+          - { ClientName: !Ref ClientName } 
+      ManagedPolicyArns:
+            - arn:aws:iam::aws:policy/AmazonRDSFullAccess
+            - arn:aws:iam::aws:policy/AmazonEC2FullAccess
+            - arn:aws:iam::aws:policy/AmazonS3FullAccess
+            - arn:aws:iam::aws:policy/CloudWatchEventsReadOnlyAccess
+            - arn:aws:iam::aws:policy/AmazonVPCFullAccess
+            - arn:aws:iam::aws:policy/AWSDirectConnectFullAccess
+            - arn:aws:iam::aws:policy/AWSCloudFormationReadOnlyAccess
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+                AWS:
+                  - !Join [ ":", [ arn, aws, "iam:", !Ref AccountSwitchRole, root ] ]
+            Action: 'sts:AssumeRole'
+            Condition:
+              Bool:
+                 'aws:MultiFactorAuthPresent': 'true'    
+  ReadOnly:
+    Condition: CreateRoles
+    Type: "AWS::IAM::Role"
+    Properties:
+      Path: "/"
+      RoleName:  
+        !Sub
+          - ${ClientName}-readonly
+          - { ClientName: !Ref ClientName } 
+      ManagedPolicyArns:
+            - arn:aws:iam::aws:policy/AmazonRDSReadOnlyAccess
+            - arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess
+            - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+            - arn:aws:iam::aws:policy/AmazonVPCReadOnlyAccess
+            - arn:aws:iam::aws:policy/AWSDirectConnectReadOnlyAccess
+            - arn:aws:iam::aws:policy/AWSCloudFormationReadOnlyAccess
+            - arn:aws:iam::aws:policy/CloudWatchEventsReadOnlyAccess
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+                AWS:
+                  - !Join [ ":", [ arn, aws, "iam:", !Ref AccountSwitchRole, root ] ]
+            Action: 'sts:AssumeRole'
+            Condition:
+              Bool:
+                 'aws:MultiFactorAuthPresent': 'true'
+  SecurityAudit:
+    Condition: CreateRoles
+    Type: "AWS::IAM::Role"
+    Properties:
+      Path: "/"
+      RoleName:  
+        !Sub
+          - ${ClientName}-securityaudit
+          - { ClientName: !Ref ClientName } 
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSSupportAccess
+        - arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess
+        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+        - arn:aws:iam::aws:policy/AmazonVPCFullAccess
+        - arn:aws:iam::aws:policy/AmazonRDSReadOnlyAccess
+        - arn:aws:iam::aws:policy/AWSDirectConnectFullAccess
+        - arn:aws:iam::aws:policy/AWSCloudFormationReadOnlyAccess
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+                AWS:
+                  - !Join [ ":", [ arn, aws, "iam:", !Ref AccountSwitchRole, root ] ]
+            Action: 'sts:AssumeRole'
+            Condition:
+              Bool:
+                 'aws:MultiFactorAuthPresent': 'true'
+  SupperUser:
+    Condition: CreateRoles
+    Type: "AWS::IAM::Role"
+    Properties:
+      Path: "/"
+      RoleName: 
+        !Sub
+          - ${ClientName}-supperuser
+          - { ClientName: !Ref ClientName } 
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+                AWS:
+                  - !Join [ ":", [ arn, aws, "iam:", !Ref AccountSwitchRole, root ] ] 
+            Action: 'sts:AssumeRole'
+            Condition:
+              Bool:
+                 'aws:MultiFactorAuthPresent': 'true'
+  NetworkAdmin:
+    Condition: CreateRoles
+    Type: "AWS::IAM::Role"
+    Properties:
+      Path: "/"
+      RoleName:  
+        !Sub
+          - ${ClientName}-networkadm
+          - { ClientName: !Ref ClientName }
+      ManagedPolicyArns:
+            - arn:aws:iam::aws:policy/job-function/NetworkAdministrator
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+                AWS:
+                  - !Join [ ":", [ arn, aws, "iam:", !Ref AccountSwitchRole, root ] ]
+            Action: 'sts:AssumeRole'
+            Condition:
+              Bool:
+                 'aws:MultiFactorAuthPresent': 'true'   
+  DeveloperUser:
+    Condition: CreateRoles
+    Type: "AWS::IAM::Role"
+    Properties:
+      Path: "/"
+      RoleName:  
+        !Sub
+          - ${ClientName}-developer
+          - { ClientName: !Ref ClientName } 
+      ManagedPolicyArns:
+            - arn:aws:iam::aws:policy/PowerUserAccess 
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+                AWS:
+                  - !Join [ ":", [ arn, aws, "iam:", !Ref AccountSwitchRole, root ] ]
+            Action: 'sts:AssumeRole'
+            Condition:
+              Bool:
+                 'aws:MultiFactorAuthPresent': 'true'       
+  SystemAdmin:
+    Condition: CreateRoles
+    Type: "AWS::IAM::Role"
+    Properties:
+      Path: "/"
+      RoleName:  
+        !Sub
+          - ${ClientName}-systemadm
+          - { ClientName: !Ref ClientName }  
+      ManagedPolicyArns:
+            - arn:aws:iam::aws:policy/job-function/SystemAdministrator
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+                AWS:
+                  - !Join [ ":", [ arn, aws, "iam:", !Ref AccountSwitchRole, root ] ]
+            Action: 'sts:AssumeRole'
+            Condition:
+              Bool:
+                 'aws:MultiFactorAuthPresent': 'true'    
+  LNKPolicyBilling:
+    Condition: CreateRoles
+    DependsOn:
+      - PowerUser
+      - SupperUser
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties:
+      Description: "Deny billing reseling accounts"
+      Path: "/"
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          -
+            Effect: Deny
+            Action:
+              -
+                'aws-portal:*'
+            Resource: '*'
+      Roles:
+        - !Ref PowerUser
+        - !Ref SupperUser
+  LNKPolicyAdmin:
+    Condition: CreateRoles
+    Type: "AWS::IAM::ManagedPolicy"
+    DependsOn:
+      - PowerUser
+      - SupperUser
+      - LNKPolicyBilling
+    Properties:
+      Description: "Admin Linke"
+      Path: "/"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowAll
+            Effect: Allow
+            Action: '*'
+            Resource: '*'
+          - Sid: DenyIam
+            Effect: Deny
+            Action:
+                - 'iam:DeleteUserPolicy'
+                - 'iam:DeletePolicy'
+                - 'iam:DeleteGroupPolicy'
+                - 'iam:DetachRolePolicy'
+                - 'iam:DetachGroupPolicy'
+                - 'iam:DetachUserPolicy'
+            Resource: '*'
+            Condition:
+              'ForAllValues:ArnEqualsIfExists':
+                'iam:PolicyARN':
+                  Fn::Join:
+                    - ""
+                    -
+                      - "arn:aws:iam::"
+                      -
+                        Ref: "AWS::AccountId"
+                      - ":policy/LNK-Billing"
+      Roles:
+        - !Ref PowerUser
+        - !Ref SupperUser 
+  PowerGroup:
+    Condition: CreateGroups
+    Type: "AWS::IAM::Group"
+    Properties:
+      GroupName: 
+        !Sub
+          - ${ClientName}PowerGroup
+          - { ClientName: !Ref ClientName }
+      ManagedPolicyArns:
+            - arn:aws:iam::aws:policy/AmazonRDSFullAccess
+            - arn:aws:iam::aws:policy/AmazonEC2FullAccess
+            - arn:aws:iam::aws:policy/AmazonS3FullAccess
+            - arn:aws:iam::aws:policy/CloudWatchEventsReadOnlyAccess
+            - arn:aws:iam::aws:policy/AmazonVPCFullAccess
+            - arn:aws:iam::aws:policy/AWSDirectConnectFullAccess
+            - arn:aws:iam::aws:policy/AWSCloudFormationReadOnlyAccess
+      Path: "/"
+  ReadOnlyGroup:
+    Condition: CreateGroups
+    Type: "AWS::IAM::Group"
+    Properties:
+      GroupName:  !Sub
+          - ${ClientName}ReadOnly
+          - { ClientName: !Ref ClientName }
+      ManagedPolicyArns:
+            - arn:aws:iam::aws:policy/AmazonRDSReadOnlyAccess
+            - arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess
+            - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+            - arn:aws:iam::aws:policy/AmazonVPCReadOnlyAccess
+            - arn:aws:iam::aws:policy/AWSDirectConnectReadOnlyAccess
+            - arn:aws:iam::aws:policy/AWSCloudFormationReadOnlyAccess
+            - arn:aws:iam::aws:policy/CloudWatchEventsReadOnlyAccess
+      Path: "/"
+  SecurityAuditGroup:
+    Condition: CreateGroups
+    Type: "AWS::IAM::Group"
+    Properties:
+      GroupName: 
+        !Sub
+          - ${ClientName}SecurityAuditGroup
+          - { ClientName: !Ref ClientName }
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSSupportAccess
+        - arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess
+        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+        - arn:aws:iam::aws:policy/AmazonVPCFullAccess
+        - arn:aws:iam::aws:policy/AmazonRDSReadOnlyAccess
+        - arn:aws:iam::aws:policy/AWSDirectConnectFullAccess
+        - arn:aws:iam::aws:policy/AWSCloudFormationReadOnlyAccess
+      Path: "/"
+  DeveloperUserGroup:
+    Condition: CreateGroups
+    Type: "AWS::IAM::Group"
+    Properties:
+      GroupName: 
+        !Sub
+          - ${ClientName}DeveloperUserGroup
+          - { ClientName: !Ref ClientName }
+      ManagedPolicyArns:
+            - arn:aws:iam::aws:policy/PowerUserAccess 
+      Path: "/"
+  NetworkAdminGroup:
+    Condition: CreateGroups
+    Type: "AWS::IAM::Group"
+    Properties:
+      GroupName: 
+        !Sub
+          - ${ClientName}NetworkAdminGroup
+          - { ClientName: !Ref ClientName }
+      ManagedPolicyArns:
+            - arn:aws:iam::aws:policy/job-function/NetworkAdministrator
+      Path: "/"
+  SystemAdminGroup:
+    Condition: CreateGroups
+    Type: "AWS::IAM::Group"
+    Properties:
+      GroupName: 
+        !Sub
+          - ${ClientName}SystemAdminGroup
+          - { ClientName: !Ref ClientName }
+      ManagedPolicyArns:
+            - arn:aws:iam::aws:policy/job-function/SystemAdministrator
+      Path: "/" 
+  PowerGroupInline:
+    Condition: CreateGroups
+    DependsOn: PowerGroup
+    Type: AWS::IAM::Policy
+    Properties: 
+      PolicyName: "PowerGroup-CrossAccountSignin-Policy"
+      PolicyDocument: 
+          Version: "2012-10-17"
+          Statement: 
+            - 
+              Effect: "Allow"
+              Action: 'sts:AssumeRole'
+              Resource: 
+                Fn::Join:
+                        - ""
+                        -
+                          - "arn:aws:iam::"
+                          - !Ref DestinationSwitchRole
+                          - ":role/"
+                          - !Sub
+                              - ${ClientName}-supperuser
+                              - { ClientName: !Ref ClientName }
+      Groups: 
+        - 
+          Ref: "PowerGroup"
+  ReadOnlyGroupsInline:
+    Condition: CreateGroups
+    DependsOn: ReadOnlyGroup
+    Type: AWS::IAM::Policy
+    Properties: 
+      PolicyName: "ReadOnlyGroup-CrossAccountSignin-Policy"
+      PolicyDocument: 
+          Version: "2012-10-17"
+          Statement: 
+            - 
+              Effect: "Allow"
+              Action: 'sts:AssumeRole'
+              Resource: 
+                Fn::Join:
+                        - ""
+                        -
+                          - "arn:aws:iam::"
+                          - !Ref DestinationSwitchRole
+                          - ":role/"
+                          - !Sub
+                              - ${ClientName}-readonly
+                              - { ClientName: !Ref ClientName }
+      Groups: 
+        - 
+          Ref: "ReadOnlyGroup"
+  SecurityAuditInline:
+    Condition: CreateGroups
+    DependsOn: SecurityAuditGroup
+    Type: AWS::IAM::Policy
+    Properties: 
+      PolicyName: "SecurityAuditGroup-CrossAccountSignin-Policy"
+      PolicyDocument: 
+          Version: "2012-10-17"
+          Statement: 
+            - 
+              Effect: "Allow"
+              Action: 'sts:AssumeRole'
+              Resource: 
+                Fn::Join:
+                        - ""
+                        -
+                          - "arn:aws:iam::"
+                          - !Ref DestinationSwitchRole
+                          - ":role/"
+                          - !Sub
+                              - ${ClientName}-securityaudit
+                              - { ClientName: !Ref ClientName }
+      Groups: 
+        - 
+          Ref: "SecurityAuditGroup"
+  DeveloperUserInline:
+    Condition: CreateGroups
+    DependsOn: DeveloperUserGroup
+    Type: AWS::IAM::Policy
+    Properties: 
+      PolicyName: "DeveloperUserGroup-CrossAccountSignin-Policy"
+      PolicyDocument: 
+          Version: "2012-10-17"
+          Statement: 
+            - 
+              Effect: "Allow"
+              Action: 'sts:AssumeRole'
+              Resource: 
+                Fn::Join:
+                        - ""
+                        -
+                          - "arn:aws:iam::"
+                          - !Ref DestinationSwitchRole
+                          - ":role/"
+                          - !Sub
+                              - ${ClientName}-developer
+                              - { ClientName: !Ref ClientName }
+      Groups: 
+        - 
+          Ref: "DeveloperUserGroup"
+  NetworkAdminInline:
+    Condition: CreateGroups
+    DependsOn: NetworkAdminGroup
+    Type: AWS::IAM::Policy
+    Properties: 
+      PolicyName: "NetworkAdminGroup-CrossAccountSignin-Policy"
+      PolicyDocument: 
+          Version: "2012-10-17"
+          Statement: 
+            - 
+              Effect: "Allow"
+              Action: 'sts:AssumeRole'
+              Resource: 
+                Fn::Join:
+                        - ""
+                        -
+                          - "arn:aws:iam::"
+                          - !Ref DestinationSwitchRole
+                          - ":role/"
+                          - !Sub
+                              - ${ClientName}-networkadm
+                              - { ClientName: !Ref ClientName }
+      Groups: 
+        - 
+          Ref: "NetworkAdminGroup"
+  SystemAdminInline:
+    Condition: CreateGroups
+    DependsOn: SystemAdminGroup
+    Type: AWS::IAM::Policy
+    Properties: 
+      PolicyName: "SystemAdminGroup-CrossAccountSignin-Policy"
+      PolicyDocument: 
+          Version: "2012-10-17"
+          Statement: 
+            - 
+              Effect: "Allow"
+              Action: 'sts:AssumeRole'
+              Resource: 
+                Fn::Join:
+                        - ""
+                        -
+                          - "arn:aws:iam::"
+                          - !Ref DestinationSwitchRole
+                          - ":role/"
+                          - !Sub
+                              - ${ClientName}-systemadm
+                              - { ClientName: !Ref ClientName }
+      Groups: 
+        - 
+          Ref: "SystemAdminGroup"
